@@ -275,6 +275,29 @@
 <div class="app">
   <div class="eyebrow" id="planilhaEyebrow">Planilha de Bianca</div>
   <h1>Gastos Mensais</h1>
+  
+  <div class="panel" id="sheetsPanel" style="margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="font-weight:800;font-size:13px;">⚙ Sincronizar com planilha</div>
+      <div id="sheetsConnectionStatus" style="font-size:11px;font-weight:800;"></div>
+    </div>
+    <div style="margin-top:10px;">
+      <label style="display:block;font-size:10px;font-weight:800;color:var(--ink-faint);margin-bottom:6px;">URL DO APPS SCRIPT</label>
+      <input id="sheetsUrlInput"
+             type="url"
+             inputmode="url"
+             autocomplete="url"
+             placeholder="https://script.google.com/macros/s/.../exec"
+             style="width:100%;box-sizing:border-box;">
+      <button id="saveSheetsUrl"
+              type="button"
+              style="width:100%;margin-top:8px;">
+        Salvar conexão
+      </button>
+      <div id="sheetsUrlMessage" style="font-size:10.5px;margin-top:7px;color:var(--ink-faint);"></div>
+    </div>
+  </div>
+
   <div class="save-status" id="saveStatus"></div>
   <div style="font-size:10.5px;color:var(--ink-faint);margin:-7px 2px 12px;">Salva no celular e envia os novos lançamentos para a planilha.</div>
 
@@ -473,7 +496,7 @@
   const STORAGE_KEY = 'monthly_expenses_v3';
 
   // Cole aqui a URL do seu Web App do Google Apps Script.
-  const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxmRojAw77pHkrtWxfl_OSQs7srWn34K5FDWJJjyTK7ZYSZ1zrSGCq1D4OsPWPb6VbPEw/exec';
+  let SHEETS_URL = localStorage.getItem('google_sheets_url') || '';
 
   function setSaveStatus(text, autoClearMs){
     const el = document.getElementById('saveStatus');
@@ -548,7 +571,7 @@
 
     setSaveStatus('Enviando para a planilha…');
 
-    const latest = expenses[expenses.length - 1];
+    const latest = expenses.length ? expenses.reduce((a,b)=> a.id > b.id ? a : b) : null;
     const sync = latest
       ? await syncExpenseToSheets(latest)
       : {ok:true};
@@ -563,6 +586,58 @@
 
     return true;
   }
+
+
+  function updateSheetsConnectionUI(){
+    const input = document.getElementById('sheetsUrlInput');
+    const status = document.getElementById('sheetsConnectionStatus');
+    const msg = document.getElementById('sheetsUrlMessage');
+    if(!input || !status) return;
+
+    input.value = SHEETS_URL || '';
+
+    if(SHEETS_URL){
+      status.textContent = '● Conectado';
+      status.style.color = 'var(--green)';
+      if(msg) msg.textContent = 'A URL está salva neste dispositivo.';
+    }else{
+      status.textContent = '○ Não configurado';
+      status.style.color = 'var(--ink-faint)';
+      if(msg) msg.textContent = 'Cole a URL do seu Web App do Apps Script.';
+    }
+  }
+
+  function configureSheets(){
+    const input = document.getElementById('sheetsUrlInput');
+    const msg = document.getElementById('sheetsUrlMessage');
+    if(!input) return;
+
+    const url = input.value.trim();
+
+    if(!url){
+      SHEETS_URL = '';
+      localStorage.removeItem('google_sheets_url');
+      if(msg) msg.textContent = 'Conexão removida.';
+      updateSheetsConnectionUI();
+      return;
+    }
+
+    if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(url)){
+      if(msg) msg.textContent = 'Cole a URL completa do Web App, terminando em /exec.';
+      return;
+    }
+
+    SHEETS_URL = url;
+    localStorage.setItem('google_sheets_url', SHEETS_URL);
+    if(msg) msg.textContent = '✓ URL salva neste dispositivo.';
+    updateSheetsConnectionUI();
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const btn = document.getElementById('saveSheetsUrl');
+    if(btn) btn.addEventListener('click', configureSheets);
+    updateSheetsConnectionUI();
+  });
 
   /* ---------- occurrences (expand installments / recurring, split by responsible) ---------- */
   const RECURRING_HORIZON_MONTHS = 36; // meses futuros a partir de hoje até onde geramos lançamentos recorrentes
