@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Controle Mensal de Gastos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF0E6;
+    --card:#FBFAF5;
+    --ink:#1F2E28;
+    --ink-soft:#657064;
+    --ink-faint:#9AA599;
+    --expense:#B4432B;
+    --accent:#5C7A63;
+    --line:#CBD1C1;
+    --radius:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  .app{
+    width:100%;
+    max-width:430px;
+    min-height:100vh;
+    padding:20px 16px 70px;
+  }
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    font-weight:600;
+    margin:0 0 4px 2px;
+  }
+  h1{
+    font-size:20px;
+    margin:0 0 16px 2px;
+    font-weight:700;
+    letter-spacing:-.01em;
+  }
+  .save-status{
+    font-size:11px;
+    color:var(--ink-faint);
+    margin:-10px 2px 12px;
+    min-height:14px;
+  }
+
+  /* Tabs */
+  .tabbar{
+    display:flex;
+    background:var(--card);
+    border-radius:12px;
+    padding:4px;
+    margin-bottom:16px;
+    box-shadow:0 1px 2px rgba(31,46,40,.06);
+  }
+  .tab-btn{
+    flex:1;
+    text-align:center;
+    padding:9px 4px;
+    font-size:12px;
+    font-weight:700;
+    border:none;
+    background:transparent;
+    color:var(--ink-soft);
+    border-radius:9px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .tab-btn.active{ background:var(--ink); color:var(--card); }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  /* Month nav */
+  .month-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+    padding:0 2px;
+  }
+  .month-nav-btn{
+    background:var(--card);
+    border:1px solid var(--line);
+    width:32px; height:32px;
+    border-radius:9px;
+    font-size:15px;
+    cursor:pointer;
+    color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .month-nav-mid{ text-align:center; }
+  .month-nav-label{ font-weight:700; font-size:15px; text-transform:capitalize; }
+  .month-nav-today{
+    display:block;
+    font-size:10.5px;
+    color:var(--ink-soft);
+    background:none;
+    border:none;
+    cursor:pointer;
+    text-decoration:underline;
+    margin:1px auto 0;
+    font-family:'Inter',sans-serif;
+  }
+
+  /* Ledger */
+  .ledger{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:22px 20px 0;
+    box-shadow:0 1px 2px rgba(31,46,40,.06), 0 8px 24px rgba(31,46,40,.05);
+    overflow:hidden;
+  }
+  .balance-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    font-weight:600;
+    letter-spacing:.04em;
+  }
+  .balance-value{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    font-size:34px;
+    letter-spacing:-.01em;
+    margin:4px 0 18px;
+    color:var(--expense);
+    font-variant-numeric:tabular-nums;
+    word-break:break-all;
+  }
+  .perforation{
+    height:0;
+    border-top:2px dashed var(--line);
+    margin:0 -20px;
+    position:relative;
+  }
+  .perforation::before, .perforation::after{
+    content:"";
+    position:absolute;
+    top:-9px;
+    width:18px; height:18px;
+    background:var(--paper);
+    border-radius:50%;
+  }
+  .perforation::before{ left:-9px; }
+  .perforation::after{ right:-9px; }
+
+  .sub-row{ display:flex; padding:14px 0 18px; }
+  .sub{ flex:1; }
+  .sub + .sub{ border-left:1px solid var(--line); padding-left:16px; margin-left:16px; }
+  .sub-label{
+    font-size:11px; color:var(--ink-soft); font-weight:600;
+    text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px;
+  }
+  .sub-value{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:16px;
+    color:var(--ink); font-variant-numeric:tabular-nums;
+  }
+
+  /* Add form */
+  .add-card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-top:16px;
+    box-shadow:0 1px 2px rgba(31,46,40,.06);
+  }
+  .field{ margin-bottom:12px; }
+  .field label{
+    display:block; font-size:11px; font-weight:600; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px;
+  }
+  .field input{
+    width:100%; border:1px solid var(--line); background:var(--paper);
+    border-radius:9px; padding:11px 12px; font-family:'Inter',sans-serif;
+    font-size:14px; color:var(--ink);
+  }
+  .field input:focus{ outline:2px solid var(--ink); outline-offset:1px; }
+  .row2{ display:flex; gap:10px; }
+  .row2 .field{ flex:1; }
+  .row2 .field.amount{ flex:0.8; }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    border:1px solid var(--line); background:var(--paper); color:var(--ink-soft);
+    font-size:12px; font-weight:600; padding:6px 11px; border-radius:100px; cursor:pointer;
+  }
+  .chip.selected{ background:var(--ink); border-color:var(--ink); color:var(--card); }
+  .chip.sub-selected{ background:var(--expense); border-color:var(--expense); color:var(--card); }
+  .chip.pay-selected{ background:var(--accent); border-color:var(--accent); color:var(--card); }
+  .subcat-wrap{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); }
+  .subcat-wrap.hidden{ display:none; }
+
+  .installments-row{
+    display:flex; gap:10px; align-items:flex-end; margin-top:10px;
+  }
+  .installments-row.hidden{ display:none; }
+  .installments-row .field{ margin-bottom:0; flex:1; }
+  .installment-preview{
+    font-size:11.5px; color:var(--ink-soft); margin-top:4px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  .add-btn{
+    width:100%; border:none; background:var(--ink); color:var(--card);
+    font-family:'Inter',sans-serif; font-weight:700; font-size:14px;
+    padding:13px 0; border-radius:10px; cursor:pointer; margin-top:14px;
+  }
+  .add-btn:active{ opacity:.85; }
+
+  .section-title{
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-soft); margin:26px 2px 10px;
+  }
+
+  /* Category / month bar summary (shared style) */
+  .bar-summary{
+    background:var(--card); border-radius:var(--radius); padding:14px 16px;
+    box-shadow:0 1px 2px rgba(31,46,40,.04);
+  }
+  .bar-row{ padding:9px 0; cursor:default; }
+  .bar-row + .bar-row{ border-top:1px solid var(--paper); }
+  .bar-row.clickable{ cursor:pointer; }
+  .bar-row-top{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:5px; }
+  .bar-name{ font-size:13px; font-weight:600; color:var(--ink); }
+  .bar-name .tag{
+    font-size:10px; font-weight:700; color:var(--accent); margin-left:6px;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .bar-amt{
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .bar-wrap{ height:6px; background:var(--paper); border-radius:4px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--expense); border-radius:4px; }
+  .bar-sub{ font-size:11px; color:var(--ink-faint); margin-top:4px; }
+
+  /* Transaction list */
+  .tx{
+    display:flex; align-items:center; background:var(--card); border-radius:12px;
+    padding:11px 12px; margin-bottom:6px; box-shadow:0 1px 2px rgba(31,46,40,.04);
+  }
+  .tx-dot{ width:8px; height:8px; border-radius:50%; margin-right:11px; flex-shrink:0; background:var(--expense); opacity:.7; }
+  .tx-body{ flex:1; min-width:0; }
+  .tx-desc{ font-size:13.5px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx-cat{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx-value{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13.5px; color:var(--expense); font-variant-numeric:tabular-nums; margin-left:10px; white-space:nowrap; }
+  .tx-del{ background:none; border:none; color:var(--ink-faint); font-size:15px; padding:2px 0 2px 10px; cursor:pointer; line-height:1; }
+
+  .empty{ text-align:center; padding:30px 10px; color:var(--ink-faint); font-size:13px; }
+
+  .proj-total{
+    background:var(--ink); color:var(--card); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:16px;
+  }
+  .proj-total .balance-label{ color:#B9C4B4; }
+  .proj-total .balance-value{ color:var(--card); font-size:30px; margin-bottom:0; }
+
+  .fade-in{ animation:fadeIn .25s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  ::selection{ background:var(--ink); color:var(--card); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="eyebrow" id="planilhaEyebrow">Planilha de Bianca</div>
+  <h1>Gastos Mensais</h1>
+  <div class="save-status" id="saveStatus"></div>
+  <div style="font-size:10.5px;color:var(--ink-faint);margin:-7px 2px 12px;">Salva no celular e envia os novos lançamentos para a planilha.</div>
+
+  <div class="tabbar" style="margin-bottom:10px;">
+    <button class="tab-btn active" data-planilha="bianca">Bianca</button>
+    <button class="tab-btn" data-planilha="matheus">Matheus</button>
+  </div>
+
+  <div class="tabbar">
+    <button class="tab-btn active" data-tab="mes">Mês atual</button>
+    <button class="tab-btn" data-tab="historico">Mês a mês</button>
+    <button class="tab-btn" data-tab="projecao">Projeção 12M</button>
+  </div>
+
+  <!-- TAB: MÊS ATUAL -->
+  <div class="tab-panel active" id="panel-mes">
+    <div class="month-nav">
+      <button class="month-nav-btn" id="prevMonth">‹</button>
+      <div class="month-nav-mid">
+        <div class="month-nav-label" id="monthLabel">—</div>
+        <button class="month-nav-today" id="gotoToday">ir para hoje</button>
+      </div>
+      <button class="month-nav-btn" id="nextMonth">›</button>
+    </div>
+
+    <div class="ledger">
+      <div class="balance-label">Total do mês</div>
+      <div class="balance-value" id="monthTotal">R$ 0,00</div>
+      <div class="perforation"></div>
+      <div class="sub-row">
+        <div class="sub">
+          <div class="sub-label">Lançamentos</div>
+          <div class="sub-value" id="monthCount">0</div>
+        </div>
+        <div class="sub">
+          <div class="sub-label">Parcelas no mês</div>
+          <div class="sub-value" id="monthInstallCount">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="add-card">
+      <div class="row2">
+        <div class="field amount">
+          <label for="amount" id="amountLabel">Valor total (R$)</label>
+          <input type="number" id="amount" inputmode="decimal" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div class="field">
+          <label for="purchaseDate">Data da compra</label>
+          <input type="date" id="purchaseDate">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="desc">Com o quê? (opcional)</label>
+        <input type="text" id="desc" placeholder="Ex: Almoço, Uber...">
+      </div>
+
+      <div class="field">
+        <label>Categoria</label>
+        <div class="chips" id="chips"></div>
+        <div class="subcat-wrap hidden" id="subcatWrap">
+          <label style="margin-bottom:6px">Subcategoria</label>
+          <div class="chips" id="subchips"></div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:0">
+        <label>Pagamento</label>
+        <div class="chips" id="payChips">
+          <button type="button" class="chip pay-selected" data-pay="avista">À vista</button>
+          <button type="button" class="chip" data-pay="parcelado">Parcelado</button>
+          <button type="button" class="chip" data-pay="recorrente">Recorrente</button>
+        </div>
+        <div class="installments-row hidden" id="installmentsRow">
+          <div class="field">
+            <label for="installments">Em quantas vezes?</label>
+            <input type="number" id="installments" min="2" max="48" value="2">
+          </div>
+        </div>
+        <div class="installment-preview" id="installmentPreview"></div>
+      </div>
+
+      <div class="field" style="margin-bottom:0">
+        <label>Responsável pelo pagamento</label>
+        <div class="chips" id="respChips">
+          <button type="button" class="chip" data-resp="bianca">Bianca</button>
+          <button type="button" class="chip" data-resp="matheus">Matheus</button>
+          <button type="button" class="chip pay-selected" data-resp="comum">Comum</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:0; margin-top:12px;">
+        <label>Banco / conta</label>
+        <div class="chips" id="bankChips">
+          <button type="button" class="chip pay-selected" data-bank="nubank">Nubank</button>
+          <button type="button" class="chip" data-bank="itau">Itaú</button>
+          <button type="button" class="chip" data-bank="inter">Inter</button>
+          <button type="button" class="chip" data-bank="xp">XP</button>
+          <button type="button" class="chip" data-bank="debito_bianca">Débito Bianca</button>
+          <button type="button" class="chip" data-bank="debito_matheus">Débito Matheus</button>
+        </div>
+      </div>
+
+      <button class="add-btn" id="addBtn">Adicionar gasto</button>
+    </div>
+
+    <div class="section-title">Por categoria neste mês</div>
+    <div class="bar-summary" id="catSummary"></div>
+
+    <div class="section-title">Lançamentos do mês</div>
+    <div id="txList"></div>
+  </div>
+
+  <!-- TAB: MÊS A MÊS -->
+  <div class="tab-panel" id="panel-historico">
+    <div class="section-title" style="margin-top:4px">Total gasto por mês</div>
+    <div class="bar-summary" id="monthHistory"></div>
+  </div>
+
+  <!-- TAB: PROJEÇÃO 12M -->
+  <div class="tab-panel" id="panel-projecao">
+    <div class="proj-total">
+      <div class="balance-label">Estimativa para os próximos 12 meses</div>
+      <div class="balance-value" id="proj12Total">R$ 0,00</div>
+    </div>
+    <div class="section-title" style="margin-top:4px">Mês a mês (estimado)</div>
+    <div class="bar-summary" id="projList"></div>
+    <div style="font-size:11px; color:var(--ink-faint); margin-top:12px; padding:0 2px; line-height:1.5;">
+      A projeção soma as parcelas e os gastos recorrentes já lançados em cada mês com uma estimativa dos gastos à vista do dia a dia, baseada na média dos últimos meses com lançamentos.
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const CATEGORIES = {
+    "Casa": ["Financiamento","Condomínio","Telefone"],
+    "Alimentação": ["Mercado","Restaurante"],
+    "Impostos": [],
+    "Saúde": ["Remédio","Médico","Academia"],
+    "Transporte": ["Combustível","Transporte público","Uber"],
+    "Diego": ["Vacina","Plano de saúde","Ração","Brinquedos"],
+    "Lazer": ["Presentes","Viagem","Vestuário","Cabeleireiro","Manicure","Streaming"],
+    "Educação": []
+  };
+  const CAT_NAMES = Object.keys(CATEGORIES);
+  const MONTH_NAMES_PT = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const BANKS = {
+    nubank: "Nubank",
+    itau: "Itaú",
+    inter: "Inter",
+    xp: "XP",
+    debito_bianca: "Débito Bianca",
+    debito_matheus: "Débito Matheus"
+  };
+
+  let expenses = [];
+  let selectedCategory = CAT_NAMES[0];
+  let selectedSubcategory = CATEGORIES[selectedCategory][0] || null;
+  let selectedPayment = 'avista';
+  let selectedResponsible = 'comum';
+  let selectedBank = 'nubank';
+  let selectedPlanilha = 'bianca';
+  let selectedMonth = currentMonthKey();
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => "R$ " + (n||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  function todayISO(){
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    return new Date(d.getTime() - off*60000).toISOString().slice(0,10);
+  }
+  function currentMonthKey(){ return todayISO().slice(0,7); }
+  function monthKeyOfDate(dateStr){ return dateStr.slice(0,7); }
+  function addMonthsToKey(key, n){
+    let [y,m] = key.split('-').map(Number);
+    m += n;
+    y += Math.floor((m-1)/12);
+    m = ((m-1)%12+12)%12 + 1;
+    return y + '-' + String(m).padStart(2,'0');
+  }
+  function monthLabel(key){
+    const [y,m] = key.split('-').map(Number);
+    return MONTH_NAMES_PT[m-1].charAt(0).toUpperCase() + MONTH_NAMES_PT[m-1].slice(1) + ' ' + y;
+  }
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  /* ---------- storage + Google Sheets ---------- */
+  const STORAGE_KEY = 'monthly_expenses_v3';
+
+  // Cole aqui a URL do seu Web App do Google Apps Script.
+  const SHEETS_URL = 'COLE_AQUI_A_URL_DO_SEU_APPS_SCRIPT';
+
+  function setSaveStatus(text, autoClearMs){
+    const el = document.getElementById('saveStatus');
+    if(!el) return;
+    el.textContent = text || '';
+    if(autoClearMs){
+      clearTimeout(setSaveStatus._t);
+      setSaveStatus._t = setTimeout(()=>{ el.textContent = ''; }, autoClearMs);
+    }
+  }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      expenses = raw ? JSON.parse(raw) : [];
+    }catch(e){
+      console.warn('Erro ao carregar gastos locais:', e);
+      expenses = [];
+    }
+    renderAll();
+  }
+
+  function saveLocal(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+      return true;
+    }catch(e){
+      console.warn('Erro ao salvar localmente:', e);
+      setSaveStatus('Não foi possível salvar no celular.', 3000);
+      return false;
+    }
+  }
+
+  async function syncExpenseToSheets(expense){
+    if(!SHEETS_URL || SHEETS_URL.includes('COLE_AQUI')){
+      return {ok:false, skipped:true};
+    }
+
+    const payload = {
+      id: expense.id,
+      date: expense.purchaseDate,
+      desc: expense.desc || expense.subcategory || expense.category,
+      category: expense.category,
+      subcategory: expense.subcategory || '',
+      amount: expense.amount,
+      paymentType: expense.paymentType || 'avista',
+      installments: expense.installments || 1,
+      responsible: expense.responsible || 'comum',
+      bank: expense.bank || ''
+    };
+
+    try{
+      // no-cors evita bloqueios de CORS em Safari/iPhone.
+      // O Apps Script recebe o POST normalmente.
+      await fetch(SHEETS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(payload),
+        keepalive: true
+      });
+      return {ok:true};
+    }catch(error){
+      console.warn('Erro ao sincronizar com Google Sheets:', error);
+      return {ok:false};
+    }
+  }
+
+  async function save(){
+    const localOk = saveLocal();
+    if(!localOk) return false;
+
+    setSaveStatus('Enviando para a planilha…');
+
+    const latest = expenses[expenses.length - 1];
+    const sync = latest
+      ? await syncExpenseToSheets(latest)
+      : {ok:true};
+
+    if(sync.ok){
+      setSaveStatus('✓ Enviado para a planilha', 2500);
+    }else if(sync.skipped){
+      setSaveStatus('Salvo no celular — configure a planilha', 3000);
+    }else{
+      setSaveStatus('Salvo no celular — não sincronizou', 3500);
+    }
+
+    return true;
+  }
+
+  /* ---------- occurrences (expand installments / recurring, split by responsible) ---------- */
+  const RECURRING_HORIZON_MONTHS = 36; // meses futuros a partir de hoje até onde geramos lançamentos recorrentes
+
+  function shareFactorFor(e, planilha){
+    const resp = e.responsible || 'comum';
+    if(resp === 'comum') return 0.5;
+    return resp === planilha ? 1 : 0;
+  }
+
+  function getOccurrences(planilha){
+    const list = [];
+    const horizonEnd = addMonthsToKey(currentMonthKey(), RECURRING_HORIZON_MONTHS);
+    expenses.forEach(e=>{
+      const factor = shareFactorFor(e, planilha);
+      if(factor === 0) return;
+      const effectiveTotal = e.amount * factor;
+      const responsible = e.responsible || 'comum';
+      const startMonth = monthKeyOfDate(e.purchaseDate);
+
+      if(e.paymentType === 'recorrente'){
+        const amt = Math.round(effectiveTotal * 100) / 100;
+        let m = startMonth;
+        let i = 0;
+        while(m <= horizonEnd){
+          list.push({
+            expenseId: e.id,
+            month: m,
+            amount: amt,
+            installmentIndex: i+1,
+            installmentsTotal: null,
+            category: e.category,
+            subcategory: e.subcategory,
+            desc: e.desc,
+            paymentType: e.paymentType,
+            responsible: responsible,
+            bank: e.bank,
+            purchaseDate: e.purchaseDate
+          });
+          i++;
+          m = addMonthsToKey(startMonth, i);
+        }
+        return;
+      }
+
+      const n = e.paymentType === 'parcelado' ? Math.max(2, e.installments || 2) : 1;
+      const base = Math.floor((effectiveTotal / n) * 100) / 100;
+      let allocated = 0;
+      for(let i=0; i<n; i++){
+        let amt;
+        if(i === n-1){ amt = Math.round((effectiveTotal - allocated) * 100) / 100; }
+        else { amt = base; allocated += base; }
+        list.push({
+          expenseId: e.id,
+          month: addMonthsToKey(startMonth, i),
+          amount: amt,
+          installmentIndex: i+1,
+          installmentsTotal: n,
+          category: e.category,
+          subcategory: e.subcategory,
+          desc: e.desc,
+          paymentType: e.paymentType,
+          responsible: responsible,
+          bank: e.bank,
+          purchaseDate: e.purchaseDate
+        });
+      }
+    });
+    return list;
+  }
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchTab(btn.dataset.tab));
+  });
+  function switchTab(tab){
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+    document.querySelectorAll('.tab-panel').forEach(p=> p.classList.remove('active'));
+    $('panel-' + tab).classList.add('active');
+  }
+
+  /* ---------- planilha (Bianca / Matheus) ---------- */
+  document.querySelectorAll('.tab-btn[data-planilha]').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchPlanilha(btn.dataset.planilha));
+  });
+  function switchPlanilha(p){
+    selectedPlanilha = p;
+    document.querySelectorAll('.tab-btn[data-planilha]').forEach(b=> b.classList.toggle('active', b.dataset.planilha===p));
+    $('planilhaEyebrow').textContent = 'Planilha de ' + (p === 'bianca' ? 'Bianca' : 'Matheus');
+    renderAll();
+  }
+
+  /* ---------- category / payment chips ---------- */
+  function renderChips(){
+    $('chips').innerHTML = CAT_NAMES.map(c =>
+      `<button type="button" class="chip${c===selectedCategory?' selected':''}" data-cat="${c}">${c}</button>`
+    ).join('');
+    $('chips').querySelectorAll('.chip').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        selectedCategory = el.dataset.cat;
+        const subs = CATEGORIES[selectedCategory];
+        selectedSubcategory = subs && subs.length ? subs[0] : null;
+        renderChips();
+        renderSubchips();
+      });
+    });
+    renderSubchips();
+  }
+  function renderSubchips(){
+    const subs = CATEGORIES[selectedCategory] || [];
+    if(subs.length === 0){
+      $('subcatWrap').classList.add('hidden');
+      $('subchips').innerHTML = '';
+      return;
+    }
+    $('subcatWrap').classList.remove('hidden');
+    $('subchips').innerHTML = subs.map(s =>
+      `<button type="button" class="chip${s===selectedSubcategory?' sub-selected':''}" data-sub="${s}">${s}</button>`
+    ).join('');
+    $('subchips').querySelectorAll('.chip').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        selectedSubcategory = el.dataset.sub;
+        renderSubchips();
+      });
+    });
+  }
+  $('payChips').querySelectorAll('.chip').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedPayment = el.dataset.pay;
+      $('payChips').querySelectorAll('.chip').forEach(c=> c.classList.remove('pay-selected'));
+      el.classList.add('pay-selected');
+      $('installmentsRow').classList.toggle('hidden', selectedPayment !== 'parcelado');
+      $('amountLabel').textContent = selectedPayment === 'recorrente' ? 'Valor mensal (R$)' : 'Valor total (R$)';
+      updateInstallmentPreview();
+    });
+  });
+  $('amount').addEventListener('input', updateInstallmentPreview);
+  $('installments').addEventListener('input', updateInstallmentPreview);
+  $('purchaseDate').addEventListener('input', updateInstallmentPreview);
+  function updateInstallmentPreview(){
+    const amount = parseFloat($('amount').value) || 0;
+    if(selectedPayment === 'parcelado' && amount > 0){
+      const n = Math.max(2, parseInt($('installments').value) || 2);
+      const each = amount / n;
+      $('installmentPreview').textContent = n + 'x de ' + fmt(each) + ' — total ' + fmt(amount);
+    } else if(selectedPayment === 'recorrente' && amount > 0){
+      const startDate = $('purchaseDate').value || todayISO();
+      $('installmentPreview').textContent = fmt(amount) + '/mês, repetindo a partir de ' + monthLabel(monthKeyOfDate(startDate)).toLowerCase();
+    } else {
+      $('installmentPreview').textContent = '';
+    }
+  }
+
+  $('respChips').querySelectorAll('.chip').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedResponsible = el.dataset.resp;
+      $('respChips').querySelectorAll('.chip').forEach(c=> c.classList.remove('pay-selected'));
+      el.classList.add('pay-selected');
+    });
+  });
+
+  $('bankChips').querySelectorAll('.chip').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedBank = el.dataset.bank;
+      $('bankChips').querySelectorAll('.chip').forEach(c=> c.classList.remove('pay-selected'));
+      el.classList.add('pay-selected');
+    });
+  });
+
+  /* ---------- month navigation ---------- */
+  $('prevMonth').addEventListener('click', ()=>{ selectedMonth = addMonthsToKey(selectedMonth, -1); renderMonthTab(); });
+  $('nextMonth').addEventListener('click', ()=>{ selectedMonth = addMonthsToKey(selectedMonth, 1); renderMonthTab(); });
+  $('gotoToday').addEventListener('click', ()=>{ selectedMonth = currentMonthKey(); renderMonthTab(); });
+
+  /* ---------- add / delete ---------- */
+  async function addExpense(){
+    const amount = parseFloat($('amount').value);
+    const desc = $('desc').value.trim();
+    const purchaseDate = $('purchaseDate').value || todayISO();
+
+    if(!amount || amount <= 0){
+      $('amount').focus();
+      return;
+    }
+    const installments = selectedPayment === 'parcelado' ? Math.max(2, parseInt($('installments').value) || 2) : 1;
+
+    expenses.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      amount: Math.round(amount * 100) / 100,
+      category: selectedCategory,
+      subcategory: selectedSubcategory,
+      desc: desc,
+      paymentType: selectedPayment,
+      installments: installments,
+      responsible: selectedResponsible,
+      bank: selectedBank,
+      purchaseDate: purchaseDate
+    });
+
+    $('amount').value = '';
+    $('desc').value = '';
+    $('purchaseDate').value = todayISO();
+    $('installmentPreview').textContent = '';
+
+    await save();
+    renderAll();
+  }
+  async function deleteExpense(id){
+    expenses = expenses.filter(e => e.id !== id);
+    await save();
+    renderAll();
+  }
+
+  /* ---------- render: month tab ---------- */
+  function renderMonthTab(){
+    $('monthLabel').textContent = monthLabel(selectedMonth);
+    const occ = getOccurrences(selectedPlanilha).filter(o => o.month === selectedMonth);
+
+    const total = occ.reduce((s,o)=> s+o.amount, 0);
+    const expenseIds = new Set(occ.map(o=>o.expenseId));
+    const installCount = occ.filter(o=> o.paymentType==='parcelado').length;
+
+    $('monthTotal').textContent = fmt(total);
+    $('monthCount').textContent = expenseIds.size;
+    $('monthInstallCount').textContent = installCount;
+
+    /* category breakdown */
+    const catTotals = {};
+    occ.forEach(o=>{ catTotals[o.category] = (catTotals[o.category]||0) + o.amount; });
+    const cats = Object.keys(catTotals).sort((a,b)=> catTotals[b]-catTotals[a]);
+    if(cats.length === 0){
+      $('catSummary').innerHTML = '<div class="empty" style="padding:14px 0">Sem gastos neste mês.</div>';
+    } else {
+      const max = Math.max(...cats.map(c=>catTotals[c]));
+      $('catSummary').innerHTML = cats.map(c=>{
+        const val = catTotals[c];
+        const pct = max > 0 ? Math.max(4, Math.round((val/max)*100)) : 0;
+        return `<div class="bar-row">
+          <div class="bar-row-top"><div class="bar-name">${escapeHtml(c)}</div><div class="bar-amt">${fmt(val)}</div></div>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    /* transaction list */
+    if(occ.length === 0){
+      $('txList').innerHTML = '<div class="empty">Nenhum gasto lançado neste mês.</div>';
+    } else {
+      const sorted = [...occ].sort((a,b)=> (b.purchaseDate||'').localeCompare(a.purchaseDate||''));
+      $('txList').innerHTML = sorted.map(o=>{
+        const label = o.desc ? o.desc : (o.subcategory ? o.subcategory : o.category);
+        let subtitle = o.subcategory ? (o.category + ' · ' + o.subcategory) : o.category;
+        if(o.paymentType === 'parcelado') subtitle += ' • Parcela ' + o.installmentIndex + '/' + o.installmentsTotal;
+        if(o.paymentType === 'recorrente') subtitle += ' • Recorrente';
+        if(o.responsible === 'comum') subtitle += ' • Dividido (' + (selectedPlanilha === 'bianca' ? 'metade Matheus' : 'metade Bianca') + ')';
+        if(o.bank && BANKS[o.bank]) subtitle += ' • ' + BANKS[o.bank];
+        return `<div class="tx fade-in">
+          <div class="tx-dot"></div>
+          <div class="tx-body">
+            <div class="tx-desc">${escapeHtml(label)}</div>
+            <div class="tx-cat">${escapeHtml(subtitle)}</div>
+          </div>
+          <div class="tx-value">${fmt(o.amount)}</div>
+          <button class="tx-del" data-id="${o.expenseId}" aria-label="Excluir">✕</button>
+        </div>`;
+      }).join('');
+      $('txList').querySelectorAll('.tx-del').forEach(btn=>{
+        btn.addEventListener('click', ()=> deleteExpense(btn.dataset.id));
+      });
+    }
+  }
+
+  /* ---------- render: mês a mês tab ---------- */
+  function renderHistoryTab(){
+    const occ = getOccurrences(selectedPlanilha);
+    if(occ.length === 0){
+      $('monthHistory').innerHTML = '<div class="empty" style="padding:14px 0">Nenhum lançamento ainda.</div>';
+      return;
+    }
+    const totals = {};
+    occ.forEach(o=>{ totals[o.month] = (totals[o.month]||0) + o.amount; });
+    const months = Object.keys(totals).sort().reverse();
+    const max = Math.max(...months.map(m=>totals[m]));
+    const cur = currentMonthKey();
+    $('monthHistory').innerHTML = months.map(m=>{
+      const val = totals[m];
+      const pct = max > 0 ? Math.max(4, Math.round((val/max)*100)) : 0;
+      const tag = m === cur ? '<span class="tag">atual</span>' : (m > cur ? '<span class="tag">futuro</span>' : '');
+      return `<div class="bar-row clickable" data-month="${m}">
+        <div class="bar-row-top"><div class="bar-name">${monthLabel(m)}${tag}</div><div class="bar-amt">${fmt(val)}</div></div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+    $('monthHistory').querySelectorAll('.bar-row').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        selectedMonth = row.dataset.month;
+        renderMonthTab();
+        switchTab('mes');
+      });
+    });
+  }
+
+  /* ---------- render: projeção 12 meses ---------- */
+  function renderProjectionTab(){
+    const occ = getOccurrences(selectedPlanilha);
+    const cur = currentMonthKey();
+
+    // média dos gastos à vista dos últimos meses concluídos (até 3)
+    const avistaTotals = {};
+    occ.forEach(o=>{
+      if(o.paymentType === 'avista' && o.month < cur){
+        avistaTotals[o.month] = (avistaTotals[o.month]||0) + o.amount;
+      }
+    });
+    const pastMonths = Object.keys(avistaTotals).sort().reverse().slice(0,3);
+    const recurringEstimate = pastMonths.length
+      ? pastMonths.reduce((s,m)=> s+avistaTotals[m], 0) / pastMonths.length
+      : 0;
+
+    // parcelas já comprometidas por mês
+    const committedTotals = {};
+    occ.forEach(o=>{ committedTotals[o.month] = (committedTotals[o.month]||0) + o.amount; });
+
+    let grandTotal = 0;
+    const rows = [];
+    for(let i=0; i<12; i++){
+      const m = addMonthsToKey(cur, i);
+      const committed = committedTotals[m] || 0;
+      const estimate = i === 0 ? 0 : recurringEstimate;
+      const total = committed + estimate;
+      grandTotal += total;
+      rows.push({month:m, committed, estimate, total});
+    }
+
+    $('proj12Total').textContent = fmt(grandTotal);
+
+    const max = Math.max(...rows.map(r=>r.total), 1);
+    $('projList').innerHTML = rows.map(r=>{
+      const pct = Math.max(4, Math.round((r.total/max)*100));
+      let subParts = [];
+      if(r.committed > 0) subParts.push('Parcelas/recorrentes: ' + fmt(r.committed));
+      if(r.estimate > 0) subParts.push('Estimativa recorrente: ' + fmt(r.estimate));
+      const sub = subParts.length ? `<div class="bar-sub">${subParts.join(' · ')}</div>` : '';
+      const tag = r.month === cur ? '<span class="tag">atual</span>' : '';
+      return `<div class="bar-row">
+        <div class="bar-row-top"><div class="bar-name">${monthLabel(r.month)}${tag}</div><div class="bar-amt">${fmt(r.total)}</div></div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+        ${sub}
+      </div>`;
+    }).join('');
+  }
+
+  function renderAll(){
+    renderMonthTab();
+    renderHistoryTab();
+    renderProjectionTab();
+  }
+
+  $('addBtn').addEventListener('click', addExpense);
+  $('purchaseDate').value = todayISO();
+
+  renderChips();
+  load();
+})();
+</script>
+</body>
+</html>
